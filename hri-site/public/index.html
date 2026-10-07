@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hospital-based surveillance and Cohort study of heat related illnesses in India</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;600&family=Source+Serif+4:wght@600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="topbar"><h1>Hospital-based surveillance and Cohort study of heat related illnesses in India</h1></div>
+
+<main class="wrap" id="app" aria-live="polite">
+  <p class="empty">Loading…</p>
+</main>
+
+<footer>
+  <span>Developed by HRI Team, ICMR NIE</span>
+  <a href="admin.html">Admin login</a>
+</footer>
+
+<script>
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const fmtMonth = v => /^\d{4}-\d{2}$/.test(v||"") ? `${MONTHS[+v.slice(5)-1]} ${v.slice(0,4)}` : "—";
+const badge = s => {
+  const cls = s === "Completed" ? "completed" : s === "Not Completed" ? "not" : "proc";
+  return `<span class="badge ${cls}">${esc(s)}</span>`;
+};
+
+function table(headers, rows, emptyText){
+  if(!rows.length) return `<p class="empty">${emptyText}</p>`;
+  return `<div class="tablewrap"><table><thead><tr>${headers.map(h=>`<th class="${h.cls||""}">${h.t}</th>`).join("")}</tr></thead><tbody>${rows.join("")}</tbody></table></div>`;
+}
+
+function render(d){
+  const comps = d.components.map(c => {
+    const inv = c.investigator;
+    const invHtml = (inv.name || inv.designation)
+      ? `<span class="n">${esc(inv.name)}</span>${inv.designation?`<span class="d">${esc(inv.designation)}</span>`:""}`
+      : `<span class="d">Not yet assigned</span>`;
+    const acts = table(
+      [{t:"Project activities"},{t:"Status"}],
+      c.activities.map(a=>`<tr><td>${esc(a.activity)}</td><td>${badge(a.status)}</td></tr>`),
+      "No project activities added yet.");
+    const up = table(
+      [{t:"Upcoming activities"},{t:"End date",cls:"date"}],
+      c.upcoming.map(a=>`<tr><td>${esc(a.activity)}</td><td class="date">${fmtMonth(a.endDate)}</td></tr>`),
+      "No upcoming activities added yet.");
+    return `<section class="component" aria-label="${esc(c.title)}">
+      <header><h3>${esc(c.title)}</h3></header>
+      <div class="body">
+        <div class="invest"><span class="k">Investigator in-charge</span>${invHtml}</div>
+        <div class="tables"><div>${acts}</div><div>${up}</div></div>
+      </div></section>`;
+  }).join("");
+
+  const pubs = table(
+    [{t:"Activity"},{t:"Status"},{t:"End date",cls:"date"}],
+    d.publications.map(a=>`<tr><td>${esc(a.activity)}</td><td>${badge(a.status)}</td><td class="date">${fmtMonth(a.endDate)}</td></tr>`),
+    "No activities added yet.");
+
+  document.getElementById("app").innerHTML = `
+    <div class="split">
+      <section class="panel"><h2>Aim</h2><p>${esc(d.aim)}</p></section>
+      <section class="panel"><h2>Objective</h2>
+        <h3>a) Primary</h3><p>${esc(d.objectives.primary)}</p>
+        <h3>b) Secondary</h3><p>${esc(d.objectives.secondary)}</p>
+      </section>
+    </div>
+    <h2 class="section-title">Components</h2>
+    ${comps}
+    <h2 class="section-title">Other activities for publication</h2>
+    <div class="panel">${pubs}</div>`;
+}
+
+fetch("/api/content").then(r => { if(!r.ok) throw 0; return r.json(); })
+  .then(render)
+  .catch(() => { document.getElementById("app").innerHTML = '<p class="empty">Could not load the project details. Please refresh the page.</p>'; });
+</script>
+</body>
+</html>
